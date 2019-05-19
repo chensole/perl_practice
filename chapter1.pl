@@ -2,6 +2,7 @@
 ## basic perl###
 use strict;
 #use warnings;
+
 ## single element and slice
 	my @array = (1,2,3,5);
 	my $a = $array[1];
