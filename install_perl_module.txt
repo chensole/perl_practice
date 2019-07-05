@@ -1,0 +1,173 @@
+# ---------------------  如何安装perl模块最终版 -------------------------------------------------
+
+# 2019-7-5
+
+
+# 非root权限安装CPAN模块
+# 亲自动手
+	
+	1. 下载好并解压文件包，进入该文件目录
+	
+	2.1  对于MakeMaker模块发行版，用INSTALL_BASE指定安装路径
+	     
+	     	perl Makefile.PL INSTALL_BASE= 想安装的目录 /a/b/c
+		make test install
+	2.2  对基于MOdule::Build的模块发行版，用--install_base指定安装路径
+
+	     	perl Build.PL --install_base 安装路径 /a/b/c
+		./Build est
+		./Build instll
+
+ 无论是哪一种，结果都是在/a/b/c/lib这个目录里创建一些子目录，我们的模块最后可能会放在 a/b/c/lib/perl5下面，然后我们需要把该目录添加到perl的模块搜索路径中去，此外还有/a/b/c/bin 和/a/b/c/man 目录，分别存放相应的工具脚本和文档
+
+
+
+ 	
+# 配置CPAN.pm
+
+	而用CPAN.pm安装模块的话，只需告诉它们我们希望的安装路径
+cpan -> o conf (输出CAPN.pm模块的配置选项) -> o conf makepl_arg INSTALL_BASE=/a/b/c指定安装路径 -> o conf commit(确认)
+
+	设置好了，一条简单的命令就能安装模块了
+	cpan Getopt::Long
+
+
+# 使用local::lib
+	
+	local::lib模块会帮我们推测出合适的配置。默认，它将会模块安装目录设置为用户主目录下。利用CPAN安装模块时，只需加载\
+	local::lib,它就会自动在用户主目录下建立一个模块目录
+	
+	perl -MCPAN -Mlocal::lib -e 'CPAN::install(Getopt::Long)' 此时，CPAN.pm会将Getopt::Long安装在 ~/perl5/lib/perl5 目录下
+	不过我们并不需要知道local::lib具体将模块目录设在什么地方，因为只要在程序中使用了local::lib模块，它就会自动将相应的模块搜索路径追加到@INC中去
+
+	```
+		#!/usr/bin/perl -w
+		
+		use local::Lib;
+		use Getopt::Long;
+	```
+
+
+#拥有自己的CPAN（建立本地CPAN仓库）
+
+	我们并不需要连接到网络才能使用CPAN，实际上需要从CPAN用到的模块并不多，一般我们都是通过相应的CPAN工具安装各个模块的最新版本
+
+	1. 建立一个 MiniCPAN
+
+	CPAN::Mini模块提供了minicpan程序，它可以将最新版本的模块复制到我们本地电脑上
+	minicpan -l /MiniCPAN -r http://cpan/example.com(提供一个镜像站点即可)
+
+ 	  当然,这里的/MiniCPAN并非一定要在本地系统上，我们也可以把它存到U盘
+
+	2. 使用自己的MiniCPAN
+
+		现在我们建立了自己的MiniCPAN,接下来要告诉CPAN工具该到什么地方找到它。对于CPAN.pm来说，需要修改urllist设置，运行cpan命令
+
+		cpan -> o conf urllist push /MiniCPAN -> o conf commit
+
+		设置好后我们就可以直接从MiniCPAN直接下载内容进行安装，不需要联网
+
+
+
+#确保perl能找到我们的模块
+
+	1. 包含路径
+		
+		perl会搜索包含路径，它是保存在全局变量@INC中的一个目录列表
+		默认的包含路径在编译perl可执行程序时就一同编译进去了.可以在命令行上实现
+
+		perl -e 'print "include is @INC\n"';
+
+		也可以通过perl -v 查看
+
+	2. 修改包含路径
+
+		如果我们有模块安装在其他地方，而不是在@INC中设置的目录下面，就需要修改包含路径以便perl能搜索到并加以使用
+		
+		这种情况一般不会经常出现，当我们构建和安装模块时，无论是用CPAN模块还是手工解压缩构建，对于特定安装的perl\
+		MakeMaker和Build模块会自动搞清楚如何将发行版文件放到正确的位置。
+
+		假设有个模块安装在share/perl这个目录下
+			
+			#你也许会想到在程序代码中临时修改包含路径
+			unshift @INC,'/share/perl';
+			use MyModule;               #错误
+
+			上面的方法不行，use指令是编译就处理的，而不是运行时才执行的。当use Module出现在我们的程序中时，
+			它实际上等价require和import这两个操作
+
+			BEGIN{ require 'Module.pm'; Module->import;}
+			
+			perl会在编译时而不是运行时执行BEGIN区块中的代码。意味着运行时修改@INC的内容不会影响use指令的执行
+
+
+			# 解决方法1:
+				
+				将@INC的修改放到它自己的BEGIN区块中
+
+				```
+					BEGIN{
+					
+						unshift @INC,'/share/perl';
+					}
+					use MyModule;       #现在可以正常工作了
+
+				```	
+			
+			# 解决方法2:
+
+				使用lib编译指令，将一个或多个目录添加到包含路径前，只需将它们作为参数提供给use lib就行
+
+				use lib '/share/perl';		#添加目录share/perl
+	
+				use lib qw (/xx/xx /xx/xx);	#添加更多目录
+
+
+				use MyModule;		     #可以正常使用
+
+			# 解决方法3:
+				
+				如果use lib不合适的话，还有其他一些方法来控制包含路径。在命令行使用-I选项
+
+				perl -I/share/perl my script;
+
+			# 解决方法4:
+				
+				我们还可以将一个或多个目录名称放到PERL5LIB环境变量中。
+				vim ~/.bashrc
+				export PERL5LIB = share/perl:/xx/xx  (UNIX型电脑)
+
+
+
+
+
+	#通过local::lib使用私有库
+
+		很多人的工作环境是受限的，他们无法安装模块至标准的库目录。尽管我们能够将模块安装在任何我们能创建文件的地方\
+		但用户主目录仍是比较好的选择
+
+		在命令行上加载local::lib会告诉我们它默认在什么地方搜索模块
+
+		perl -Mlocal::lib
+
+		注意local::lib会为我们自动添加这些平台相关的目录，要使用本地库目录运行自己的程序，可以通过命令行-M参数进行\
+		加载
+
+		perl _Mlocal::lib xx.pl
+
+		我们也可以在程序中使用local::lib,它会为我们添加正确的目录
+		use local::lib
+
+
+
+
+
+
+
+
+
+
+
+
+
+
