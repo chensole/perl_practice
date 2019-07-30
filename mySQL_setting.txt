@@ -1,0 +1,134 @@
+
+# -----------------------  Linux MySQL 配置
+
+
+# mysql 安装后首次登录
+
+	mysql -u root  (不需要密码)
+
+# 更改 mysql 数据库 root 的密码
+
+  	ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '123456';  # 将root密码改为 123456
+
+ 
+# 设置密码后 root 登录方式
+
+  mysql -u root -p
+
+
+
+
+# 创建一个普通用户并授权
+
+	grant all on *.* to user1 identified by '123456';   all 表示所有的权限(读、写、查询、删除等等操作)  
+														
+														*.* 前面的 * 表示所有的数据库，后面的 * 表示所有的表
+
+														identified by '' 引号内为创建用户的登录密码
+
+														这里的 user1 指的是 localhost上的用户
+
+	grant all on *.* to 'user2'@'10.0.2.100' identified by '123456';
+
+														给网络上的其他机器上的某个用户授权
+
+														用户和主机的IP之间有一个 @ 
+
+	grant all on *.* to 'user2'@'%' identified by '123456';
+
+														@ 后面的 IP地址可以用 %表示，指的是网络上的所有机器都可以访问 mysql 数据库
+
+
+															
+
+
+
+
+# ------------------------------------- 连接数据库
+
+
+  上述说的方式是连接本地的数据库 'localhost',很多时候我们是连接网络中的某一主机上的 mysql
+  
+  mysql -u user1 -p –P 3306 -h 10.0.2.69   -P 指定远程主机 mysql 的绑定端口，默认都是 3306  -h 指定远程主机的 IP
+
+
+# ------------------------- 一些基本的 mySQL操作命令
+
+# 查询当前所有的库
+
+	show databases;
+
+# 进入某个库，假如存在库名为 test
+
+	use test;
+
+# 查询某个库的表，假设存在一个名为 mtcars 的表
+
+	show tables;
+
+# 查询某个表的字段 (即变量名) 的类型: 下面两个语句等价
+	
+	describe mtcars;
+	desc mtcars;
+
+# 查询当前是哪个用户
+
+	select user();
+
+# 查看当前所在数据库
+
+	select database();
+
+# 创建一个新库，如 db1
+
+	create database db1;
+
+# 创建一个表
+
+  create table t1 ( `id` int(4), `name` char(40));
+
+# 显示表的所有数据，如 mtcars
+
+	select * from mtcars;
+	select * from test_db.mtcars;   查看 test_db 库中的 mtcars表
+# 查看当前系统时间
+
+	select current_date, current_time;
+
+
+
+
+# ------------------ 一些常用的 sql
+
+
+# 查询语句
+
+	select count(*) from mysql.user;    查询mysql库的user表，总共有多少行count(*)
+	
+
+# 删除表 如表chenzhi
+
+	drop table chenzhi;
+
+# 删除数据库 如库 db1
+
+	drop databases db1;
+
+
+
+
+# ------------------- 服务器上的 Rstudio 访问本地电脑的 mysql 数据库
+
+
+编辑 /etc/my.cnf文件，将[mysqld]项下的bind-address修改为本机IP地址。我虚拟机的IP地址是192.168.1.117, 配置文件修改如下：
+
+		[mysqld]
+    	 bind-address = 192.168.1.117
+
+
+
+
+
+
+
+
